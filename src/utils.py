@@ -28,7 +28,7 @@ def resize_img(img_path, output_folder, resize):
 # resize training data
 input_folder = "../data/train/"
 output_folder = "../data/train_resized/"
-images = glob.glob(os.path.join(input_folder, "*.jpg"))  # create a list of all images
+images = glob.glob(os.path.join(input_folder, "*.jpg"))
 Parallel(n_jobs=10)(
     delayed(resize_img)(i, output_folder, (128, 128)) for i in tqdm(images)
 )
@@ -36,7 +36,7 @@ Parallel(n_jobs=10)(
 # resize test data
 input_folder = "../data/test/"
 output_folder = "../data/test_resized/"
-images = glob.glob(os.path.join(input_folder, "*.jpg"))  # create a list of all images
+images = glob.glob(os.path.join(input_folder, "*.jpg"))
 Parallel(n_jobs=10)(
     delayed(resize_img)(i, output_folder, (128, 128)) for i in tqdm(images)
 )

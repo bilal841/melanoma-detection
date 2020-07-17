@@ -23,15 +23,13 @@ class SEResNext50_32x4d(nn.Module):
 
     def __init__(self, pretrained="imagenet"):
         super(SEResNext50_32x4d, self).__init__()
-        self.model = pretrainedmodels.__dict__["se_resnext50_32x4d"](
-            pretrained=pretrained
-        )
-        self.out = nn.Linear(
-            2048, 1
-        )  # note that we only have to rank the images using AUC
+        self.model = pretrainedmodels.__dict__[
+            "se_resnext50_32x4d"](pretrained=pretrained)
+        # take care of the sigmoid before calculating the loss
+        self.out = nn.Linear(2048, 1)
 
     def forward(self, image, targets):
-        batch_size, channel, height, width = image.shape
+        batch_size, _, _, _ = image.shape
         x = self.model.features(image)
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.reshape(batch_size, -1)
@@ -49,9 +47,12 @@ class EfficientNet(nn.Module):
     def __init__(self):
         super(EfficientNet, self).__init__()
         self.base_model = efficientnet_pytorch.EfficientNet.from_pretrained(
-            "efficientnet-b0"
+            'efficientnet-b0')
+        self.base_model._fc = nn.Linear(
+            in_features=1280,
+            out_features=1,
+            bias=True
         )
-        self.base_model._fc = nn.Linear(in_features=1280, out_features=1, bias=True)
 
     def forward(self, image, targets):
         out = self.base_model(image)
@@ -85,20 +86,24 @@ def train(fold):
 
     # normalize and augment the data
     train_augmentation = albumentations.Compose(
-        [albumentations.Normalize(mean, std, max_pixel_value=255.0, always_apply=True)]
+        [albumentations.Normalize(
+            mean, std, max_pixel_value=255.0, always_apply=True)]
     )
     val_augmentation = albumentations.Compose(
-        [albumentations.Normalize(mean, std, max_pixel_value=255.0, always_apply=True)]
+        [albumentations.Normalize(
+            mean, std, max_pixel_value=255.0, always_apply=True)]
     )
 
     # define the training images and their class
     train_images = df_train.image_name.values.tolist()
-    train_images = [os.path.join(training_data_path, i + ".jpg") for i in train_images]
+    train_images = [os.path.join(training_data_path, i+".jpg")
+                    for i in train_images]
     train_targets = df_train.target.values
 
     # define the validation images and their class
     val_images = df_val.image_name.values.tolist()
-    val_images = [os.path.join(training_data_path, i + ".jpg") for i in val_images]
+    val_images = [os.path.join(training_data_path, i+".jpg")
+                  for i in val_images]
     val_targets = df_val.target.values
 
     # define the train and validation dataset
@@ -106,21 +111,27 @@ def train(fold):
         image_paths=train_images,
         targets=train_targets,
         resize=None,
-        augmentations=train_augmentation,
+        augmentations=train_augmentation
     )
     val_dataset = ClassificationLoader(
         image_paths=val_images,
         targets=val_targets,
         resize=None,
-        augmentations=val_augmentation,
+        augmentations=val_augmentation
     )
 
     # define the training and validation dataloader
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=train_bs, shuffle=True, num_workers=4
+        train_dataset,
+        batch_size=train_bs,
+        shuffle=True,
+        num_workers=4
     )
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=val_bs, shuffle=False, num_workers=4
+        val_dataset,
+        batch_size=val_bs,
+        shuffle=False,
+        num_workers=4
     )
 
     # define the model
@@ -130,14 +141,13 @@ def train(fold):
     # define the optimizer, scheduler, and incorporate early stopping
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=3, mode="max"
-    )
+        optimizer, patience=3, mode="max")
     es = EarlyStopping(patience=3, mode="max")
 
     # train the model
     for epoch in range(epochs):
-        training_loss = Engine.train(train_loader, model, optimizer, device, fp16=False)
-        predictions, val_loss = Engine.evaluate(val_loader, model, device)
+        Engine.train(train_loader, model, optimizer, device, fp16=False)
+        predictions, _ = Engine.evaluate(val_loader, model, device)
         predictions = np.vstack((predictions)).ravel()
 
         # compute the metric we focus on
@@ -168,9 +178,8 @@ def predict(fold):
     std = (0.229, 0.224, 0.225)
 
     # normalize the images
-    aug = albumentations.Compose(
-        [albumentations.Normalize(mean, std, max_pixel_value=255.0, always_apply=True)]
-    )
+    aug = albumentations.Compose([albumentations.Normalize(
+        mean, std, max_pixel_value=255.0, always_apply=True)])
 
     # get the test images and their associated target values
     images = df.image_name.values.tolist()
@@ -179,7 +188,10 @@ def predict(fold):
 
     # define the test dataset and dataloader
     test_dataset = ClassificationLoader(
-        image_paths=images, targets=targets, resize=None, augmentations=aug,
+        image_paths=images,
+        targets=targets,
+        resize=None,
+        augmentations=aug,
     )
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=16, shuffle=False, num_workers=4

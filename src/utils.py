@@ -15,11 +15,13 @@ def resize_img(img_path, output_folder, resize):
         img_path (string): name of the path containing all images
         output_folder (string): name of the output folder
         resize (tuple): tuple consisting new image shape
-    """  
+    """
     base_name = os.path.basename(img_path)
     output_path = os.path.join(output_folder, base_name)
     img = Image.open(img_path)
-    img = img.resize((resize[1], resize[0]), resample=Image.BILINEAR)  # resize the images
+    img = img.resize(
+        (resize[1], resize[0]), resample=Image.BILINEAR
+    )  # resize the images
     img.save(output_path)
 
 
@@ -27,10 +29,14 @@ def resize_img(img_path, output_folder, resize):
 input_folder = "../data/train/"
 output_folder = "../data/train_resized/"
 images = glob.glob(os.path.join(input_folder, "*.jpg"))  # create a list of all images
-Parallel(n_jobs=10)(delayed(resize_img)(i, output_folder, (128, 128)) for i in tqdm(images))
+Parallel(n_jobs=10)(
+    delayed(resize_img)(i, output_folder, (128, 128)) for i in tqdm(images)
+)
 
 # resize test data
 input_folder = "../data/test/"
 output_folder = "../data/test_resized/"
 images = glob.glob(os.path.join(input_folder, "*.jpg"))  # create a list of all images
-Parallel(n_jobs=10)(delayed(resize_img)(i, output_folder, (128, 128)) for i in tqdm(images))
+Parallel(n_jobs=10)(
+    delayed(resize_img)(i, output_folder, (128, 128)) for i in tqdm(images)
+)

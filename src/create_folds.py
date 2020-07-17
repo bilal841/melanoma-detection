@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     # we want the ratio of positive to negative samples to be (somewhat) constant in each fold
     kf = model_selection.StratifiedKFold(
-        n_splits=10, shuffle=True, random_state=42)
+        n_splits=5, shuffle=True, random_state=42)
 
     for f, (t_, v_) in enumerate(kf.split(X=df, y=y)):
         df.loc[v_, "kfold"] = f

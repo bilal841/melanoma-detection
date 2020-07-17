@@ -8,9 +8,8 @@ import torch.nn as nn
 
 from torch.nn import functional as F
 from sklearn import metrics
-from wtfml.data_loaders.image import ClassificationLoader
-from wtfml.utils import EarlyStopping
-from wtfml.engine import Engine
+from engine import ClassificationDataLoader, Engine
+from utils import EarlyStopping
 from models import SEResNext50_32x4d, EfficientNet
 
 
@@ -68,13 +67,13 @@ def train(fold):
     val_targets = df_val.target.values
 
     # define the train and validation dataset
-    train_dataset = ClassificationLoader(
+    train_dataset = ClassificationDataLoader(
         image_paths=train_images,
         targets=train_targets,
         resize=None,
         augmentations=train_augmentation
     )
-    val_dataset = ClassificationLoader(
+    val_dataset = ClassificationDataLoader(
         image_paths=val_images,
         targets=val_targets,
         resize=None,
@@ -107,7 +106,7 @@ def train(fold):
 
     # train the model
     for epoch in range(epochs):
-        Engine.train(train_loader, model, optimizer, device, fp16=False)
+        Engine.train(train_loader, model, optimizer, device)
         predictions, _ = Engine.evaluate(val_loader, model, device)
         predictions = np.vstack((predictions)).ravel()
 
@@ -148,7 +147,7 @@ def predict(fold):
     targets = np.zeros(len(images))
 
     # define the test dataset and dataloader
-    test_dataset = ClassificationLoader(
+    test_dataset = ClassificationDataLoader(
         image_paths=images,
         targets=targets,
         resize=None,
@@ -170,14 +169,14 @@ def predict(fold):
 
 
 if __name__ == "__main__":
-    # for i in range(10):
+    # for i in range(5):
     #     train(i)
 
     # predictions = []
-    # for i in range(10):
+    # for i in range(5):
     #     predictions.append(predict(i))
 
-    # result = np.sum(predictions) / 10
+    # result = np.sum(predictions) / 5
     # result_csv = pd.read_csv("../data/sample_submission.csv")
     # result_csv.loc[:, "target"] = result
     # result_csv.to_csv("../data/submission.csv", index=False)

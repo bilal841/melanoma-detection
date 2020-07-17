@@ -1,8 +1,6 @@
 import os
 import torch
-import pretrainedmodels
 import albumentations
-import efficientnet_pytorch
 
 import numpy as np
 import pandas as pd
@@ -13,51 +11,7 @@ from sklearn import metrics
 from wtfml.data_loaders.image import ClassificationLoader
 from wtfml.utils import EarlyStopping
 from wtfml.engine import Engine
-
-
-class SEResNext50_32x4d(nn.Module):
-    """Class representing the Squeeze-and-Excitation network.
-
-    See https://arxiv.org/abs/1611.05431 for details.
-    """
-
-    def __init__(self, pretrained="imagenet"):
-        super(SEResNext50_32x4d, self).__init__()
-        self.model = pretrainedmodels.__dict__[
-            "se_resnext50_32x4d"](pretrained=pretrained)
-        # take care of the sigmoid before calculating the loss
-        self.out = nn.Linear(2048, 1)
-
-    def forward(self, image, targets):
-        batch_size, _, _, _ = image.shape
-        x = self.model.features(image)
-        x = F.adaptive_avg_pool2d(x, 1)
-        x = x.reshape(batch_size, -1)
-        out = self.out(x)
-        loss = nn.BCEWithLogitsLoss()(out, targets.reshape(-1, 1).type_as(out))
-        return out, loss
-
-
-class EfficientNet(nn.Module):
-    """Class representing the Efficient Net model
-
-    See https://github.com/lukemelas/EfficientNet-PyTorch for details.
-    """
-
-    def __init__(self):
-        super(EfficientNet, self).__init__()
-        self.base_model = efficientnet_pytorch.EfficientNet.from_pretrained(
-            'efficientnet-b0')
-        self.base_model._fc = nn.Linear(
-            in_features=1280,
-            out_features=1,
-            bias=True
-        )
-
-    def forward(self, image, targets):
-        out = self.base_model(image)
-        loss = nn.BCEWithLogitsLoss()(out, targets.view(-1, 1).type_as(out))
-        return out, loss
+from models import SEResNext50_32x4d, EfficientNet
 
 
 def train(fold):
@@ -86,12 +40,19 @@ def train(fold):
 
     # normalize and augment the data
     train_augmentation = albumentations.Compose(
-        [albumentations.Normalize(
-            mean, std, max_pixel_value=255.0, always_apply=True)]
+        [
+            albumentations.Normalize(
+                mean, std, max_pixel_value=255.0, always_apply=True),
+            albumentations.ShiftScaleRotate(
+                shift_limit=0.05, scale_limit=0.1, rotate_limit=10),
+            albumentations.Flip(p=0.3)
+        ]
     )
     val_augmentation = albumentations.Compose(
-        [albumentations.Normalize(
-            mean, std, max_pixel_value=255.0, always_apply=True)]
+        [
+            albumentations.Normalize(
+                mean, std, max_pixel_value=255.0, always_apply=True)
+        ]
     )
 
     # define the training images and their class
@@ -209,5 +170,17 @@ def predict(fold):
 
 
 if __name__ == "__main__":
+    # for i in range(10):
+    #     train(i)
+
+    # predictions = []
+    # for i in range(10):
+    #     predictions.append(predict(i))
+
+    # result = np.sum(predictions) / 10
+    # result_csv = pd.read_csv("../data/sample_submission.csv")
+    # result_csv.loc[:, "target"] = result
+    # result_csv.to_csv("../data/submission.csv", index=False)
+
     train(0)
     predict(0)
